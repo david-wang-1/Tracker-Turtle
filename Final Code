@@ -1,0 +1,143 @@
+/* This code operates the Tracker Turtle device. It reads the acceleration from the 
+Lightblue Bean embedded in the turtle, on sounds a buzzer and lights up LED's when 
+the acceleration passes a certain threshold. Additionally, the Tracker Turtle 
+communicates with the user's phone to turn the lock state on and off and send 
+a notification when the acceleration reaches the threshold*/
+
+//Threshold for acceleration
+#define THRESHOLD 135
+//Defines the size and combonation of the key code to lock and unlock the Turtle
+#define KEYCODE_SIZE         sizeof(keycode)
+const char keycode[] = {13, 14, 15, 16};
+
+//variables for determining acceleration
+AccelerationReading previousAccel;
+AccelerationReading defaultAccel;
+
+//"Theft" is used for when the Turtle is armed and the acceleration threshold is breached
+boolean theft;
+
+//Digital pins for speaker and LED's 
+int speaker_Low = 0;
+int speaker_High = 3;
+int LED1_Low = A0;
+int LED1_High = A1;
+int LED2_Low = 4;
+int LED2_High = 5;
+
+//Messages Turtle sends to phone
+uint8_t SAFE[] = {'S', 'A', 'F', 'E', ' '};
+uint8_t THEFT[] = {'T', 'H', 'E', 'F', 'T'};
+
+void setup() {
+  Serial.begin(57600);  
+  Serial.setTimeout(25);
+  // Sets speaker and LED's as outputs 
+  pinMode(speaker_Low, OUTPUT);
+  pinMode(speaker_High, OUTPUT);
+  pinMode(LED1_Low, OUTPUT);
+  pinMode(LED1_High, OUTPUT);
+  pinMode(LED2_Low, OUTPUT);
+  pinMode(LED2_High, OUTPUT);
+  
+  //Starts with speaker and LED's as off 
+  digitalWrite(speaker_Low, LOW);
+  digitalWrite(speaker_High, LOW);
+  digitalWrite(LED1_Low, LOW);
+  digitalWrite(LED1_High, LOW);
+  digitalWrite(LED2_Low, LOW);
+  digitalWrite(LED2_High, LOW);
+
+  //Initial reading of acceleration is starting state of Turtle
+  previousAccel = Bean.getAcceleration(); 
+  
+  //starts with theft variable as false 
+  theft = false;
+}
+
+void loop() {
+  //Locking and unlocking turtle:
+  char buffer[10];
+  size_t length = 10;
+  static char last_value = 0;
+  static char index = 0;
+  static char lock_state = 0;
+  
+  length = Serial.readBytes(buffer, length); 
+  
+  if( length > 0 ){
+    if(buffer[0] != last_value){  
+        if(buffer[0] == keycode[index]){
+          index++;
+          if(index == KEYCODE_SIZE){
+            // Lock / Unlock Turtle
+          lock_state = !lock_state;
+          index = 0;  
+          defaultAccel = Bean.getAcceleration();
+          Bean.setScratchData(1, SAFE, 5);
+          }
+        }else{
+          index = 0;
+        }
+    }
+    last_value = buffer[0];
+  }
+
+  //If Turtle is locked but not moved, the light is set to green 
+  if(lock_state){
+  Bean.setLed(0, 255, 0);
+  }
+            
+  //If the turtle is not locked, the light is off
+  else{
+  Bean.setLed(0, 0, 0);
+  }
+            
+  // Get the current acceleration with a conversion of 3.91×10-3 g/unit.
+  AccelerationReading currentAccel = Bean.getAcceleration();   
+            
+  // Find the difference between the current acceleration and that of 200ms ago.
+  int accelDifference = getAccelDifference(previousAccel, currentAccel); 
+  // Update previousAccel for the next loop.   
+  previousAccel = currentAccel;
+  // Check if the Bean has been moved beyond our threshold.  
+  
+  //if acceleration passes the threshold while locked:
+  if (lock_state && accelDifference > THRESHOLD) {
+       if (theft == false) {
+        Serial.print("THEFT"); 
+       }
+       Bean.setScratchData(1, THEFT, 5); //Send "THEFT" to scratch 1 in light blue app
+       theft = true;
+       //Speaker sounds and LEDs light red for 2 seconds 
+       digitalWrite(speaker_Low, LOW);
+       digitalWrite(speaker_High, HIGH);
+       digitalWrite(LED1_Low, LOW);
+       digitalWrite(LED1_High, HIGH);
+       digitalWrite(LED2_Low, LOW);
+       digitalWrite(LED2_High, HIGH);
+       Bean.setLed(255, 0, 0);
+       Bean.sleep(2000);
+       //After 2 seconds, return to normal state if LED is back in origional position
+       digitalWrite(speaker_High, LOW);
+       digitalWrite(LED1_High, LOW);
+       digitalWrite(LED2_High, LOW);
+       
+       previousAccel = defaultAccel;
+  }
+  else {
+    theft = false;
+  }
+
+  //Sleeps every 2ms to check for accerelation difference 
+  Bean.sleep(200);
+}
+            
+// This function calculates the difference between two acceleration readings
+int getAccelDifference(AccelerationReading readingOne, AccelerationReading readingTwo){
+  int deltaX = abs(readingTwo.xAxis - readingOne.xAxis);
+  int deltaY = abs(readingTwo.yAxis - readingOne.yAxis);
+  int deltaZ = abs(readingTwo.zAxis - readingOne.zAxis);
+  // Return the magnitude
+  return deltaX+ deltaY + deltaZ;   
+}
