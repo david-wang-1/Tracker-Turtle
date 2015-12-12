@@ -1,1 +1,4 @@
 # Tracker-Turtle
+The Tracker Turtle is a compact, scalable anti-theft device. The Tracker Turtle can be easily "locked" & "unlocked" from any Bluetooth capable device. RGB LEDs built into the turtle will glow green when the device is "locked". The Turtles can be placed on personal belongings such as laptops and backpacks and "locked" to protect them from thefts. Once locked, when movement is sensed with the aid of an onboard accelerometer and our sophisticated algorithms, it will sound an alarm, flash red, and send a Bluetooth notification to your cellular device. A powerful built in magnet and non-slip surface on the bottom allow the TrackerTurtle to be secured to many surfaces. 
+
+ An alternate mode still in development will allow you to disable the movement based alarm and switch to a proximity based "wireless leash" instead; alarms will be sounded when the distance between turtle and smartphone exceed a certain threshold, measured by monitoring signal strength. 
