@@ -1,0 +1,21 @@
+// Framework for connection detection on LightBlue Beam
+
+void setup()
+{
+  Bean.setLed(0,0,0);
+}
+static bool connected = false;
+ 
+void loop()
+{
+ 
+ connected = Bean.getConnectionState();
+ 
+ if (!connected && lock_state)
+ {
+ theft = true;
+}
+ 
+ Bean.sleep(100);
+  
+}
